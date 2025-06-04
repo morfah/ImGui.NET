@@ -449,7 +449,7 @@ namespace ImGuiNET.SampleProgram.XNA
         //     if (c == '\t') return;
         //     ImGui.GetIO().AddInputCharacter(c);
         // }
-        /////////////////////////////////////////
+        ///////////////////////////////////////////
 
         protected virtual void Dispose(bool disposing)
         {
@@ -472,7 +472,7 @@ namespace ImGuiNET.SampleProgram.XNA
 
                 // FNA-specific ///////////////////////////
                 // TextInputEXT.TextInput -= OnTextInput;
-                /////////////////////////////////////////
+                ///////////////////////////////////////////
             }
 
             _disposed = true;
