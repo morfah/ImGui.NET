@@ -22,7 +22,7 @@ namespace ImGuiNET.SampleProgram.XNA
             _graphics = new GraphicsDeviceManager(this);
             _graphics.PreferredBackBufferWidth = 1024;
             _graphics.PreferredBackBufferHeight = 768;
-            _graphics.PreferMultiSampling = true;
+            _graphics.PreferMultiSampling = false;
 
             IsMouseVisible = true;
         }
