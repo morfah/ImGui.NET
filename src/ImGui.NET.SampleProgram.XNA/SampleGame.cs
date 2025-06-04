@@ -52,6 +52,13 @@ namespace ImGuiNET.SampleProgram.XNA
             base.LoadContent();
         }
 
+        protected override void UnloadContent()
+        {
+            _imGuiRenderer.Dispose();
+            Content.Unload();
+            base.UnloadContent();
+        }
+
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(new Color(clear_color.X, clear_color.Y, clear_color.Z));
