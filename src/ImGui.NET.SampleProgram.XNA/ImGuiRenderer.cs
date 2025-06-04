@@ -10,15 +10,15 @@ namespace ImGuiNET.SampleProgram.XNA
     /// <summary>
     /// ImGui renderer for use with XNA-likes (FNA & MonoGame)
     /// </summary>
-    public class ImGuiRenderer
+    public class ImGuiRenderer : IDisposable
     {
-        private Game _game;
+        private readonly Game _game;
 
         // Graphics
-        private GraphicsDevice _graphicsDevice;
+        private readonly GraphicsDevice _graphicsDevice;
 
         private BasicEffect _effect;
-        private RasterizerState _rasterizerState;
+        private readonly RasterizerState _rasterizerState;
 
         private byte[] _vertexData;
         private VertexBuffer _vertexBuffer;
@@ -29,7 +29,7 @@ namespace ImGuiNET.SampleProgram.XNA
         private int _indexBufferSize;
 
         // Textures
-        private Dictionary<IntPtr, Texture2D> _loadedTextures;
+        private readonly Dictionary<IntPtr, Texture2D> _loadedTextures;
 
         private int _textureId;
         private IntPtr? _fontTextureId;
@@ -38,7 +38,9 @@ namespace ImGuiNET.SampleProgram.XNA
         private int _scrollWheelValue;
         private int _horizontalScrollWheelValue;
         private readonly float WHEEL_DELTA = 120;
-        private Keys[] _allKeys = Enum.GetValues<Keys>();
+        private readonly Keys[] _allKeys = Enum.GetValues<Keys>();
+
+        private bool _disposed;
 
         public ImGuiRenderer(Game game)
         {
@@ -63,6 +65,12 @@ namespace ImGuiNET.SampleProgram.XNA
             SetupInput();
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         #region ImGuiRenderer
 
         /// <summary>
@@ -81,6 +89,8 @@ namespace ImGuiNET.SampleProgram.XNA
             // Create and register the texture as an XNA texture
             var tex2d = new Texture2D(_graphicsDevice, width, height, false, SurfaceFormat.Color);
             tex2d.SetData(pixels);
+            tex2d.Name = "ImGui font atlas";
+            tex2d.Tag = "ImGui";
 
             // Should a texture already have been build previously, unbind it first so it can be deallocated
             if (_fontTextureId.HasValue) UnbindTexture(_fontTextureId.Value);
@@ -120,6 +130,9 @@ namespace ImGuiNET.SampleProgram.XNA
         {
             ImGui.GetIO().DeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+            // Enable docking
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+
             UpdateInput();
 
             ImGui.NewFrame();
@@ -144,24 +157,12 @@ namespace ImGuiNET.SampleProgram.XNA
         /// </summary>
         protected virtual void SetupInput()
         {
-            var io = ImGui.GetIO();
-
             // MonoGame-specific //////////////////////
-            _game.Window.TextInput += (s, a) =>
-            {
-                if (a.Character == '\t') return;
-                io.AddInputCharacter(a.Character);
-            };
-
+            _game.Window.TextInput += OnTextInput;
             ///////////////////////////////////////////
 
             // FNA-specific ///////////////////////////
-            //TextInputEXT.TextInput += c =>
-            //{
-            //    if (c == '\t') return;
-
-            //    ImGui.GetIO().AddInputCharacter(c);
-            //};
+            // TextInputEXT.TextInput += OnTextInput;
             ///////////////////////////////////////////
         }
 
@@ -170,7 +171,7 @@ namespace ImGuiNET.SampleProgram.XNA
         /// </summary>
         protected virtual Effect UpdateEffect(Texture2D texture)
         {
-            _effect = _effect ?? new BasicEffect(_graphicsDevice);
+            _effect ??= new BasicEffect(_graphicsDevice);
 
             var io = ImGui.GetIO();
 
@@ -180,6 +181,8 @@ namespace ImGuiNET.SampleProgram.XNA
             _effect.TextureEnabled = true;
             _effect.Texture = texture;
             _effect.VertexColorEnabled = true;
+            _effect.Name = $"{texture.Name}_effect";
+            _effect.Tag = "ImGui";
 
             return _effect;
         }
@@ -190,7 +193,7 @@ namespace ImGuiNET.SampleProgram.XNA
         protected virtual void UpdateInput()
         {
             if (!_game.IsActive) return;
-            
+
             var io = ImGui.GetIO();
 
             var mouse = Mouse.GetState();
@@ -202,6 +205,7 @@ namespace ImGuiNET.SampleProgram.XNA
             io.AddMouseButtonEvent(3, mouse.XButton1 == ButtonState.Pressed);
             io.AddMouseButtonEvent(4, mouse.XButton2 == ButtonState.Pressed);
 
+            // FNA-specific information. FNA does not have horizontal scroll wheel support. So you need to set 0f for horizontal scroll wheel value.
             io.AddMouseWheelEvent(
                 (mouse.HorizontalScrollWheelValue - _horizontalScrollWheelValue) / WHEEL_DELTA,
                 (mouse.ScrollWheelValue - _scrollWheelValue) / WHEEL_DELTA);
@@ -220,11 +224,11 @@ namespace ImGuiNET.SampleProgram.XNA
             io.DisplayFramebufferScale = new System.Numerics.Vector2(1f, 1f);
         }
 
-        private bool TryMapKeys(Keys key, out ImGuiKey imguikey)
+        private static bool TryMapKeys(Keys key, out ImGuiKey imguikey)
         {
-            //Special case not handed in the switch...
-            //If the actual key we put in is "None", return none and true. 
-            //otherwise, return none and false.
+            // Special case not handed in the switch...
+            // If the actual key we put in is "None", return none and true. 
+            // otherwise, return none and false.
             if (key == Keys.None)
             {
                 imguikey = ImGuiKey.None;
@@ -390,12 +394,12 @@ namespace ImGuiNET.SampleProgram.XNA
                 {
                     ImDrawCmdPtr drawCmd = cmdList.CmdBuffer[cmdi];
 
-                    if (drawCmd.ElemCount == 0) 
+                    if (drawCmd.ElemCount == 0)
                     {
                         continue;
                     }
 
-                    if (!_loadedTextures.ContainsKey(drawCmd.TextureId))
+                    if (!_loadedTextures.TryGetValue(drawCmd.TextureId, out Texture2D value))
                     {
                         throw new InvalidOperationException($"Could not find a texture with id '{drawCmd.TextureId}', please check your bindings");
                     }
@@ -407,7 +411,7 @@ namespace ImGuiNET.SampleProgram.XNA
                         (int)(drawCmd.ClipRect.W - drawCmd.ClipRect.Y)
                     );
 
-                    var effect = UpdateEffect(_loadedTextures[drawCmd.TextureId]);
+                    var effect = UpdateEffect(value);
 
                     foreach (var pass in effect.CurrentTechnique.Passes)
                     {
@@ -429,6 +433,49 @@ namespace ImGuiNET.SampleProgram.XNA
                 vtxOffset += cmdList.VtxBuffer.Size;
                 idxOffset += cmdList.IdxBuffer.Size;
             }
+        }
+
+        // MonoGame-specific //////////////////////
+        private void OnTextInput(object s, TextInputEventArgs a)
+        {
+           if (a.Character == '\t') return;
+           ImGui.GetIO().AddInputCharacter(a.Character);
+        }
+        ///////////////////////////////////////////
+
+        // FNA-specific ///////////////////////////
+        // private void OnTextInput(char c)
+        // {
+        //     if (c == '\t') return;
+        //     ImGui.GetIO().AddInputCharacter(c);
+        // }
+        /////////////////////////////////////////
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                _vertexBuffer?.Dispose();
+                _indexBuffer?.Dispose();
+                _effect?.Dispose();
+
+                foreach (var texture in _loadedTextures)
+                {
+                    texture.Value?.Dispose();
+                }
+
+                // MonoGame-specific //////////////////////
+                _game.Window.TextInput -= OnTextInput;
+                ///////////////////////////////////////////
+
+                // FNA-specific ///////////////////////////
+                // TextInputEXT.TextInput -= OnTextInput;
+                /////////////////////////////////////////
+            }
+
+            _disposed = true;
         }
 
         #endregion Internals
