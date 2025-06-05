@@ -40,7 +40,7 @@ namespace ImGuiNET.SampleProgram.XNA
         private readonly float WHEEL_DELTA = 120;
         private readonly Keys[] _allKeys = Enum.GetValues<Keys>();
 
-        private bool _disposed;
+        private bool _isDisposed;
 
         public ImGuiRenderer(Game game)
         {
@@ -453,7 +453,7 @@ namespace ImGuiNET.SampleProgram.XNA
 
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed) return;
+            if (_isDisposed) return;
 
             if (disposing)
             {
@@ -475,7 +475,7 @@ namespace ImGuiNET.SampleProgram.XNA
                 ///////////////////////////////////////////
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
 
         #endregion Internals
