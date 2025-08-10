@@ -36,8 +36,8 @@ namespace ImGuiNET.SampleProgram.XNA
 
         // Input
         private int _scrollWheelValue;
-        private int _horizontalScrollWheelValue;
-        private readonly float WHEEL_DELTA = 120;
+        private int _horizontalScrollWheelValue; // FNA does not support horizontal scroll wheel. This can be commented out when using FNA.
+        private const float WHEEL_DELTA = 120;
         private readonly Keys[] _allKeys = Enum.GetValues<Keys>();
 
         private bool _isDisposed;
@@ -171,18 +171,21 @@ namespace ImGuiNET.SampleProgram.XNA
         /// </summary>
         protected virtual Effect UpdateEffect(Texture2D texture)
         {
-            _effect ??= new BasicEffect(_graphicsDevice);
-
             var io = ImGui.GetIO();
 
+            _effect ??= new BasicEffect(_graphicsDevice);
             _effect.World = Matrix.Identity;
             _effect.View = Matrix.Identity;
             _effect.Projection = Matrix.CreateOrthographicOffCenter(0f, io.DisplaySize.X, io.DisplaySize.Y, 0f, -1f, 1f);
             _effect.TextureEnabled = true;
             _effect.Texture = texture;
             _effect.VertexColorEnabled = true;
-            _effect.Name = $"{texture.Name}_effect";
-            _effect.Tag = "ImGui";
+
+            if (string.IsNullOrEmpty(_effect.Name))
+            {
+                _effect.Name = $"{texture.Name}_effect";
+                _effect.Tag = "ImGui";
+            }
 
             return _effect;
         }
