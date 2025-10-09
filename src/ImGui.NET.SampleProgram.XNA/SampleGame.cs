@@ -63,14 +63,20 @@ namespace ImGuiNET.SampleProgram.XNA
         {
             GraphicsDevice.Clear(new Color(clear_color.X, clear_color.Y, clear_color.Z));
 
-            // Call BeforeLayout first to set things up
-            _imGuiRenderer.BeforeLayout(gameTime);
+            // Only draw the UI when we have a valid delta time. Otherwise ImGui will give an assertion failure.
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (dt > 0f)
+            {
+                ImGui.GetIO().Framerate = 1f / dt;
+                // Call BeforeLayout first to set things up
+                _imGuiRenderer.BeforeLayout(gameTime);
 
-            // Draw our UI
-            ImGuiLayout();
+                // Draw our UI
+                ImGuiLayout();
 
-            // Call AfterLayout now to finish up and draw all the things
-            _imGuiRenderer.AfterLayout();
+                // Call AfterLayout now to finish up and draw all the things
+                _imGuiRenderer.AfterLayout();
+            }    
 
             base.Draw(gameTime);
         }
