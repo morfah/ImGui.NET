@@ -21,11 +21,11 @@ namespace ImGuiNET.SampleProgram.XNA
         private readonly RasterizerState _rasterizerState;
 
         private byte[] _vertexData;
-        private VertexBuffer _vertexBuffer;
+        private DynamicVertexBuffer _vertexBuffer;
         private int _vertexBufferSize;
 
         private byte[] _indexData;
-        private IndexBuffer _indexBuffer;
+        private DynamicIndexBuffer _indexBuffer;
         private int _indexBufferSize;
 
         // Textures
@@ -230,7 +230,7 @@ namespace ImGuiNET.SampleProgram.XNA
         private static bool TryMapKeys(Keys key, out ImGuiKey imguikey)
         {
             // Special case not handed in the switch...
-            // If the actual key we put in is "None", return none and true. 
+            // If the actual key we put in is "None", return none and true.
             // otherwise, return none and false.
             if (key == Keys.None)
             {
@@ -344,7 +344,7 @@ namespace ImGuiNET.SampleProgram.XNA
                 _vertexBuffer?.Dispose();
 
                 _vertexBufferSize = (int)(drawData.TotalVtxCount * 1.5f);
-                _vertexBuffer = new VertexBuffer(_graphicsDevice, DrawVertDeclaration.Declaration, _vertexBufferSize, BufferUsage.None);
+                _vertexBuffer = new DynamicVertexBuffer(_graphicsDevice, DrawVertDeclaration.Declaration, _vertexBufferSize, BufferUsage.None);
                 _vertexData = new byte[_vertexBufferSize * DrawVertDeclaration.Size];
             }
 
@@ -353,7 +353,7 @@ namespace ImGuiNET.SampleProgram.XNA
                 _indexBuffer?.Dispose();
 
                 _indexBufferSize = (int)(drawData.TotalIdxCount * 1.5f);
-                _indexBuffer = new IndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
+                _indexBuffer = new DynamicIndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
                 _indexData = new byte[_indexBufferSize * sizeof(ushort)];
             }
 
@@ -377,8 +377,10 @@ namespace ImGuiNET.SampleProgram.XNA
             }
 
             // Copy the managed byte arrays to the gpu vertex- and index buffers
-            _vertexBuffer.SetData(_vertexData, 0, drawData.TotalVtxCount * DrawVertDeclaration.Size);
-            _indexBuffer.SetData(_indexData, 0, drawData.TotalIdxCount * sizeof(ushort));
+            // Discard means we don't need last frame's data, so the driver can give us
+            // fresh storage instead of stalling until the GPU is done reading it.
+            _vertexBuffer?.SetData(_vertexData, 0, drawData.TotalVtxCount * DrawVertDeclaration.Size, SetDataOptions.Discard);
+            _indexBuffer?.SetData(_indexData, 0, drawData.TotalIdxCount * sizeof(ushort), SetDataOptions.Discard);
         }
 
         private unsafe void RenderCommandLists(ImDrawDataPtr drawData)
